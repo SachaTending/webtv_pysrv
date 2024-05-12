@@ -3,6 +3,7 @@ from headwaiter import hdwtr
 from register import srv as regsrv
 from os import urandom
 from base64 import b64encode
+from conf import fetch_conf
 
 s = Service("wtv-1800")
 
@@ -45,7 +46,12 @@ special_services_flags = {
     "wtv-head-waiter": "0x00000004"
 }
 
-def construct_wtv1800_resp(host: str="localhost", port: int=1615, srv: MiniServer=None):
+def construct_wtv1800_resp(host: str=None, port: int=None, srv: MiniServer=None):
+    d = fetch_conf()
+    if host == None:
+        host = d['service_ip']
+    if port == None:
+        port = int(d['port'])
     resp = ['reset']
     form = "host={host} port={port} name={name} flags={flags} connections=1"
     for i in srv.svcs:
