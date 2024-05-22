@@ -1,7 +1,7 @@
-from dataclasses import dataclass
+from dataclasses import  dataclass
 from socket import socket
 from os import SEEK_END
-from typing import Union, IO
+from typing import Union, IO, BinaryIO, TextIO
 
 @dataclass
 class CommonHeaders:
@@ -39,8 +39,17 @@ class Response:
         out = bytearray()
         out += f"{self.code[0]} {self.code[1]}\n".encode()
         hdrs = self.headers
-        if self.data:
-            hdrs['Content-Length'] = len(self.data)
+        d = self.data
+        if isinstance(d, str):
+            d = d.encode()
+        elif isinstance(d, Union[TextIO, BinaryIO, IO]):
+            _seek = d.tell()
+            d.seek(0)
+            _data = d.read()
+            d.seek(_seek)
+            d = _data
+        if d:
+            hdrs['Content-Length'] = len(d)
         else:
             hdrs['Content-Length'] = 0
         for i in hdrs.items():
@@ -50,9 +59,6 @@ class Response:
             else:
                 out += f"{i[0]}: {i[1]}\n".encode()
         out += b"\n"
-        d = self.data
-        if isinstance(d, str):
-            d = d.encode()
         out += d
         return bytes(out)
     def construct_response_streamed(self) -> bytes:

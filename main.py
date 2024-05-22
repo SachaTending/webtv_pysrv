@@ -1,9 +1,15 @@
 from srv import MiniServer, Service, Request, Response, ssid_storage, SSID_Storage, hide_ssid
 from headwaiter import hdwtr
 from register import srv as regsrv
+from home import wtvhome, wtvcenter
+from wtvmail import wtvmail as mailsvc
+from settings import wtvserv as wtvsett
+from spotads import wtvspot
+from content import content
 from os import urandom
-from base64 import b64encode
+from base64 import b64encode, b64decode
 from conf import fetch_conf
+from challenge import gen_challenge
 
 s = Service("wtv-1800")
 
@@ -23,21 +29,25 @@ def prereg(req: Request):
     ssid = req.common_headers.ssid
     ssid_storage[ssid].initial_key = gen_key()
     hdrs = {
-        'wtv-visit': 'wtv-1800:/fetch_svcs',
+        'wtv-visit': 'wtv-1800:/fetch-svcs',
         "Content-Type": "text/html",
-        "wtv-initial-key": ssid_storage[ssid].initial_key,
+        "wtv-initial-key": ssid_storage[ssid].initial_key
     }
     return Response(hdrs)
 
-@s.route("/fetch_svcs")
+@s.route("/fetch-svcs")
 def fetch_svcs(req: Request):
     ssid = req.common_headers.ssid
-    ssid_storage[ssid].initial_key = gen_key()
+    #ssid_storage[ssid].initial_key = gen_key()
+    ch = gen_challenge(b64decode(ssid_storage[ssid].initial_key.encode()))
+    print(ch, ch[2])
+    ssid_storage[ssid].challenge = b64encode(ch[2]).decode()
+    #ssid_storage[ssid].challenge_solved = check_challenge(ch[2], b64decode(ssid_storage[ssid].initial_key.encode()))
     hdrs = {
         'wtv-service': construct_wtv1800_resp(srv=srv),
         'wtv-visit': 'wtv-head-waiter:/login',
         "Content-Type": "text/html",
-        "wtv-initial-key": ssid_storage[ssid].initial_key,
+        "wtv-challenge": b64encode(ch[2]).decode()
     }
     return Response(hdrs)
 
@@ -53,13 +63,24 @@ def construct_wtv1800_resp(host: str=None, port: int=None, srv: MiniServer=None)
     if port == None:
         port = int(d['port'])
     resp = ['reset']
-    form = "host={host} port={port} name={name} flags={flags} connections=1"
+    form = "host={host} port={port} name={name} flags={flags} connections=10"
     for i in srv.svcs:
         resp.append(form.format(host=host, port=port, name=i.svc_name, flags=special_services_flags.get(i.svc_name, "0x00000007")))
     return resp
 
 srv = MiniServer()
-srv.svcs.append(s)
-srv.svcs.append(hdwtr)
-srv.svcs.append(regsrv)
+
+services = [
+    s, # wtv-1800
+    hdwtr, # wtv-head-waiter
+    regsrv, # wtv-register
+    wtvhome, # wtv-home
+    wtvcenter, # wtv-center
+    content, # wtv-content
+    mailsvc, # wtv-mail
+    wtvsett, # wtv-settings
+    wtvspot # wtv-spot
+]
+
+srv.svcs.extend(services)
 srv.start()

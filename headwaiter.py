@@ -1,6 +1,8 @@
 from srv import Service, Request, ssid_storage, Response, hide_ssid, FileServe
 from json import dumps
 from usrstor import check_ssid
+from base64 import b64decode
+from challenge import check_challenge
 
 hdwtr = Service("wtv-head-waiter")
 fs = FileServe(hdwtr, "imgs", "images")
@@ -8,10 +10,15 @@ fs = FileServe(hdwtr, "imgs", "images")
 
 @hdwtr.route("/login")
 def login(req: Request): # simulate full login sequence
+    ssid = req.common_headers.ssid
+    print(req.headers)
     hdrs = {
         "Content-Type": "text/html",
         "wtv-visit": "wtv-head-waiter:/login-stage-two",
     }
+    if check_challenge(b64decode(ssid_storage[ssid].challenge.encode()), b64decode(ssid_storage[ssid].initial_key.encode()), b64decode(req.headers['wtv-challenge-response'].encode())):
+        hdrs['wtv-visit'] = 'wtv-1800:/fetch-svcs'
+        print(" * Challenge is not solved, retrying...")
     return Response(hdrs, code=(200, 'OK'))
 
 @hdwtr.route("/login-stage-two")
@@ -19,10 +26,22 @@ def solve_challenge(req: Request):
     hdrs = {
         "Content-Type": "text/html"
     }
-    if check_ssid(req):
-        hdrs['wtv-visit'] = 'wtv-head-waiter:/technical'
+    if True:
+        hdrs['wtv-visit'] = 'wtv-head-waiter:/final-stage'
     else:
         hdrs['wtv-visit'] = 'wtv-register:/register'
+    return Response(hdrs)
+
+@hdwtr.route("/final-stage")
+def final_stage(req: Request):
+    hdrs = {
+        "Content-Type": "text/html",
+        "wtv-home-url": "wtv-home:/home",
+        "wtv-boot-url": "wtv-head-waiter:/login?",
+        "wtv-reconnect-url": "wtv-head-waiter:/login?",
+        "wtv-settings-url": "wtv-setup:/retrieve",
+        "wtv-visit": "wtv-home:/home"
+    }
     return Response(hdrs)
 
 @hdwtr.route("/technical")

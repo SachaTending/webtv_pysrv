@@ -1,7 +1,7 @@
 from .wtvp import receive_request, Request, Response, CommonHeaders
 from .global_storage import ssid_storage, SSID_Storage
 from threading import Thread
-from socket import socket, SHUT_RD
+from socket import socket, SHUT_RD, SOL_SOCKET, SO_REUSEADDR
 from typing import Callable
 from traceback import print_exception
 
@@ -125,6 +125,7 @@ class MiniServer: # truly a miniserver
         sock.close()
     def start(self):
         self.sock = socket()
+        self.sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         while True:
             try:
                 self.sock.bind((self.host, self.port))
@@ -132,7 +133,7 @@ class MiniServer: # truly a miniserver
                 break
             except Exception as e:
                 print(f" * Exception while binding: {e}, trying again...")
-        self.sock.listen(100)
+        self.sock.listen(10)
         self.sock.settimeout(0.5)
         print(f" * Listening on {self.host}:{self.port}")
         while True:

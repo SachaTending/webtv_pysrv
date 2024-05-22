@@ -9,6 +9,8 @@ class SSID_Storage:
     challenge_solved: str = ""
     counter: int = 10000000
     counter_orig: int = counter
+    rc4_key_1: bytes = b''
+    rc4_key_2: bytes = b''
 
 class Storage1:
     def __init__(self, name: str="SSID") -> None:
