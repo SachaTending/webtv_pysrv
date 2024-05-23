@@ -1,4 +1,4 @@
-from srv import MiniServer, Service, Request, Response, ssid_storage, SSID_Storage, hide_ssid
+from srv import MiniServer, Service, Request, Response, ssid_storage, SSID_Storage, hide_ssid, is_warrior
 from headwaiter import hdwtr
 from register import srv as regsrv
 from home import wtvhome, wtvcenter
@@ -40,15 +40,19 @@ def fetch_svcs(req: Request):
     ssid = req.common_headers.ssid
     #ssid_storage[ssid].initial_key = gen_key()
     ch = gen_challenge(b64decode(ssid_storage[ssid].initial_key.encode()))
-    print(ch, ch[2])
+    #print(ch, ch[2])
     ssid_storage[ssid].challenge = b64encode(ch[2]).decode()
     #ssid_storage[ssid].challenge_solved = check_challenge(ch[2], b64decode(ssid_storage[ssid].initial_key.encode()))
     hdrs = {
         'wtv-service': construct_wtv1800_resp(srv=srv),
         'wtv-visit': 'wtv-head-waiter:/login',
         "Content-Type": "text/html",
-        "wtv-challenge": b64encode(ch[2]).decode()
+        #"wtv-challenge": b64encode(ch[2]).decode()
     }
+    if not is_warrior(req):
+        hdrs['wtv-challenge'] = b64encode(ch[2]).decode()
+    else:
+        print(" * Detected WebTV Warrior, challenge-response process is disabled.")
     return Response(hdrs)
 
 special_services_flags = {

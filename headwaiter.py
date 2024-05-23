@@ -1,4 +1,4 @@
-from srv import Service, Request, ssid_storage, Response, hide_ssid, FileServe
+from srv import Service, Request, ssid_storage, Response, hide_ssid, FileServe, is_warrior
 from json import dumps
 from usrstor import check_ssid
 from base64 import b64decode
@@ -11,14 +11,17 @@ fs = FileServe(hdwtr, "imgs", "images")
 @hdwtr.route("/login")
 def login(req: Request): # simulate full login sequence
     ssid = req.common_headers.ssid
-    print(req.headers)
+    print(f" * Headers: {dumps(req.headers, indent=4)}")
     hdrs = {
         "Content-Type": "text/html",
         "wtv-visit": "wtv-head-waiter:/login-stage-two",
     }
-    if check_challenge(b64decode(ssid_storage[ssid].challenge.encode()), b64decode(ssid_storage[ssid].initial_key.encode()), b64decode(req.headers['wtv-challenge-response'].encode())):
-        hdrs['wtv-visit'] = 'wtv-1800:/fetch-svcs'
-        print(" * Challenge is not solved, retrying...")
+    if not is_warrior(req):
+        if check_challenge(b64decode(ssid_storage[ssid].challenge.encode()), b64decode(ssid_storage[ssid].initial_key.encode()), b64decode(req.headers['wtv-challenge-response'].encode())):
+            hdrs['wtv-visit'] = 'wtv-1800:/fetch-svcs'
+            print(" * Challenge is not solved, retrying...")
+    else:
+        print(" * Detected WebTV Warrior, challenge-response process is disabled.")
     return Response(hdrs, code=(200, 'OK'))
 
 @hdwtr.route("/login-stage-two")
