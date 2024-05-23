@@ -11,11 +11,6 @@ def hide_ssid(s: str):
     return "".join(s[:g]) + "*"*l
 
 def is_warrior(req: Request): # Is client is a webtv warrior
-    w = False
-    if req.headers['User-Agent'] == 'Artemis/0.0':
-        w = True
-    else:
-        w = False
     if req.headers['wtv-system-version'] == '0.0':
         w = True
     return w
