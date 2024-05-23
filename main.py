@@ -72,7 +72,7 @@ def construct_wtv1800_resp(host: str=None, port: int=None, srv: MiniServer=None)
         resp.append(form.format(host=host, port=port, name=i.svc_name, flags=special_services_flags.get(i.svc_name, "0x00000007")))
     return resp
 
-srv = MiniServer()
+srv = MiniServer(port=int(fetch_conf()['port']))
 
 services = [
     s, # wtv-1800
