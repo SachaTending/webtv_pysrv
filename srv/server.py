@@ -146,6 +146,8 @@ class MiniServer: # truly a miniserver
             except KeyboardInterrupt:
                 print(" * Stopping server...")
                 break
-        self.sock.shutdown(SHUT_RD)
+        try:
+            self.sock.shutdown(SHUT_RD)
+        except OSError: pass
         self.sock.close()
         print("Server stopped.")
