@@ -1,5 +1,6 @@
 from srv import MiniServer, Service, Request, Response, ssid_storage, SSID_Storage, hide_ssid, is_warrior
 from headwaiter import hdwtr
+import headwaiter
 from register import srv as regsrv
 from home import wtvhome, wtvcenter
 from wtvmail import wtvmail as mailsvc
@@ -10,6 +11,7 @@ from os import urandom
 from base64 import b64encode, b64decode
 from conf import fetch_conf
 from challenge import gen_challenge
+from json import dumps
 
 try:
     from loguru import logger
@@ -34,14 +36,106 @@ def issue_challnge(req: Request) -> str:
 
 @s.route("/preregister")
 def prereg(req: Request):
+    hdrs = {
+        "wtv-phone-log-url": "wtv-1800:/post-phone-log",
+        "Content-Type": "text/html"
+    }
+    return Response(hdrs)
+
+conf = fetch_conf()
+
+@s.route("/post-phone-log")
+def post_phone_log(req: Request):
+    hdrs = {
+        'Content-Type': 'text/html',
+        'wtv-service': ['reset', f'host={conf["service_ip"]} port={conf["port"]} name=wtv-1800 flags=0x00000004'],
+        "wtv-visit": "wtv-1800:/finish-prereg"
+    }
+    return Response(hdrs)
+
+tellyList = [
+    {
+        'rom_type': [
+            'US-LC2-disk-0MB-8MB',
+            'US-LC2-disk-0MB-8MB-softmodem-CPU5230',
+            'US-BPS-flashdisk-0MB-8MB-softmodem-CPU5230',
+            'US-LC2-flashdisk-0MB-16MB-softmodem-CPU5230',
+            'US-WEBSTAR-disk-0MB-16MB-softmodem-CPU5230'
+        ],
+        'oisp': 'LC2_OISP.tok',
+        'normal': 'LC2_normal.tok'
+    },
+    {
+        'rom_type': [
+            'bf0app'
+        ],
+        'oisp': 'bf0_OISP.tok',
+        'normal': 'bf0_normal.tok'
+    },
+    {
+        'rom_type': [
+            'JP-Fiji'
+        ],
+        'oisp': 'dc_normal.tok',
+        'normal': 'dc_normal.tok'
+    }
+]
+
+def is_minibrowser(req: Request):
+    b1 = req.headers.get('wtv-need-upgrade', None)
+    if b1 == None or b1 == 'false':
+        b1 = False
+    elif b1 == 'true':
+        b1 = True
+    b2 = req.headers.get('wtv-used-8675309', None)
+    if b2 == None or b2 == 'false':
+        b2 = False
+    elif b2 == 'true':
+        b2 = True
+    return b1 or b2
+
+def guess_telly(req: Request) -> tuple[str, str]:
+    t = "text/tellyscript"
+    tel = None
+    if req.common_headers.systype == 'US-DTV-disk-0MB-32MB-softmodem-CPU5230':
+        if is_minibrowser(req):
+            if req.headers.get('wtv-open-access', None) == 'true': tel = tellyList[0]['oisp']
+            else: tel = tellyList[0]['normal']
+        else:
+            t = "text/dialscript"
+            if req.headers.get("wtv-lan", None) == 'true':
+                tel = "utv_hsd.tok"
+            else:
+                tel = "utv_normal.tok"
+    else:
+        for i in tellyList:
+            if req.common_headers.systype in i['rom_type']:
+                tel = i['oisp']
+            else:
+                tel = i['normal']
+    return t, tel
+
+@s.route("/finish-prereg")
+def finish_prereg(req: Request):
     ssid = req.common_headers.ssid
     ssid_storage[ssid].initial_key = gen_key()
     hdrs = {
-        'wtv-visit': 'wtv-1800:/fetch-svcs',
-        "Content-Type": "text/html",
+        "wtv-service": [
+            'reset',
+            f'host={conf["service_ip"]} port={conf["port"]} name=wtv-head-waiter flags=0x00000001 connections=1',
+        ],
+        'wtv-visit': 'wtv-head-waiter:/login?',
+        'wtv-boot-url': 'wtv-head-waiter:/login',
         "wtv-initial-key": ssid_storage[ssid].initial_key
     }
+    logger.info(f"Headers: {dumps(hdrs, indent=4)}")
+    tel = guess_telly(req)
+    hdrs['Content-Type'] = tel[0]
+    if tel[1] != None:
+        data = open(f"tellyscripts/{tel[1]}", "rb").read()
+        return Response(hdrs, data)
     return Response(hdrs)
+
 
 @s.route("/fetch-svcs")
 def fetch_svcs(req: Request):
@@ -64,8 +158,8 @@ def fetch_svcs(req: Request):
     return Response(hdrs)
 
 special_services_flags = {
-    "wtv-1800": "0x00000001",
-    "wtv-head-waiter": "0x00000004"
+    "wtv-1800": "0x00000004",
+    "wtv-head-waiter": "0x00000001"
 }
 
 def construct_wtv1800_resp(host: str=None, port: int=None, srv: MiniServer=None):
@@ -93,6 +187,8 @@ services = [
     wtvsett, # wtv-settings
     wtvspot # wtv-spot
 ]
+
+headwaiter.srv = srv
 
 srv.svcs.extend(services)
 srv.start()
