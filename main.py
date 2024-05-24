@@ -122,7 +122,7 @@ def finish_prereg(req: Request):
     hdrs = {
         "wtv-service": [
             'reset',
-            f'host={conf["service_ip"]} port={conf["port"]} name=wtv-head-waiter flags=0x00000001 connections=1',
+            f'host={conf["service_ip"]} port={conf["port"]} name=wtv-head-waiter flags=0x00000004 connections=1',
         ],
         'wtv-visit': 'wtv-head-waiter:/login?',
         'wtv-boot-url': 'wtv-head-waiter:/login',
