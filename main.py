@@ -11,6 +11,14 @@ from base64 import b64encode, b64decode
 from conf import fetch_conf
 from challenge import gen_challenge
 
+try:
+    from loguru import logger
+except ImportError:
+    from srv import LoguruFallback
+    logger = LoguruFallback()
+
+__name__ = "Server main"
+
 s = Service("wtv-1800")
 
 def gen_key():
@@ -18,7 +26,7 @@ def gen_key():
 
 def issue_challnge(req: Request) -> str:
     ssid = req.common_headers.ssid
-    print(f" * Generating new challenge for SSID {hide_ssid(req.common_headers.ssid)}")
+    logger.info(f"Generating new challenge for SSID {hide_ssid(req.common_headers.ssid)}")
     ssid = req.common_headers.ssid
     ch = ssid_storage[ssid].security.IssueChallenge()
     sl = ssid_storage[ssid].security.ProcessChallenge(ch)
@@ -52,7 +60,7 @@ def fetch_svcs(req: Request):
     if not is_warrior(req):
         hdrs['wtv-challenge'] = b64encode(ch[2]).decode()
     else:
-        print(" * Detected WebTV Warrior, challenge-response process is disabled.")
+        logger.info("Detected WebTV Warrior, challenge-response process is disabled.")
     return Response(hdrs)
 
 special_services_flags = {

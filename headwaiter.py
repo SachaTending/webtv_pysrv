@@ -4,6 +4,14 @@ from usrstor import check_ssid
 from base64 import b64decode
 from challenge import check_challenge
 
+try:
+    from loguru import logger
+except ImportError:
+    from srv import LoguruFallback
+    logger = LoguruFallback()
+
+__name__ = "Headwaiter service"
+
 hdwtr = Service("wtv-head-waiter")
 fs = FileServe(hdwtr, "imgs", "images")
 
@@ -11,7 +19,7 @@ fs = FileServe(hdwtr, "imgs", "images")
 @hdwtr.route("/login")
 def login(req: Request): # simulate full login sequence
     ssid = req.common_headers.ssid
-    print(f" * Headers: {dumps(req.headers, indent=4)}")
+    logger.info("Headers: {dumps(req.headers, indent=4)}")
     hdrs = {
         "Content-Type": "text/html",
         "wtv-visit": "wtv-head-waiter:/login-stage-two",
@@ -19,9 +27,9 @@ def login(req: Request): # simulate full login sequence
     if not is_warrior(req):
         if check_challenge(ssid_storage[ssid].challenge, ssid_storage[ssid].initial_key, req.headers['wtv-challenge-response']):
             hdrs['wtv-visit'] = 'wtv-1800:/fetch-svcs'
-            print(" * Challenge is not solved, retrying...")
+            logger.info("Challenge is not solved, retrying...")
     else:
-        print(" * Detected WebTV Warrior, challenge-response process is disabled.")
+        logger.info("Detected WebTV Warrior, challenge-response process is disabled.")
     return Response(hdrs, code=(200, 'OK'))
 
 @hdwtr.route("/login-stage-two")

@@ -2,6 +2,7 @@ from .wtvp import Request, receive_request, Response
 from .server import Service, MiniServer, FileServe
 from .global_storage import SSID_Storage, ssid_storage
 #from .challenge import WTVNetworkSecurity # code by emac
+from .logger import LoguruFallback
 
 def hide_ssid(s: str):
     l = len(s)

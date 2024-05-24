@@ -5,6 +5,14 @@ from socket import socket, SHUT_RD, SOL_SOCKET, SO_REUSEADDR
 from typing import Callable
 from traceback import print_exception
 
+try:
+    from loguru import logger
+except ImportError:
+    from .logger import LoguruFallback
+    logger = LoguruFallback()
+
+__name__ = 'Main WebTV server'
+
 def gen_400(st: str) -> bytes:
     d = f"400 {st}\n\n"
     return d.encode()
@@ -48,7 +56,7 @@ class Service:
                     sock.send(gen_400(f"handler returned unknown response type: {type(resp)}"))
             except Exception as e:
                 print_exception(e)
-                print(" * Returning exception to webtv so i can properly close webtv socket.")
+                logger.info("Returning exception to webtv so i can properly close webtv socket.")
                 sock.send(gen_400(f"Server ran into problem, please try again later. Technical details: {e}"))
 
 class FileServe:
@@ -81,10 +89,10 @@ class FileServe:
                 r = rsp.construct_response_streamed()
                 sock.send(r)
                 s = sock.sendfile(d)
-                print(f" * Sent file {p}, size: {s} bytes")
+                logger.info(f"Sent file {p}, size: {s} bytes")
             except Exception as e:
                 print_exception(e)
-                print(" * Returning exception to webtv so i can properly close webtv socket.")
+                logger.info("Returning exception to webtv so i can properly close webtv socket.")
                 sock.send(gen_400(f"Server ran into problem, please try again later. Technical details: {e}"))
         else:
             self.orig_handl(req, sock) # let Service handle this request
@@ -112,14 +120,14 @@ class MiniServer: # truly a miniserver
         sock.settimeout(1)
         req = receive_request(sock)
         add_common_headers(req)
-        print(f" * {addr[0]}:{addr[1]}: {req.method} {req.path}")
+        logger.info(f"{addr[0]}:{addr[1]}: {req.method} {req.path}")
         svc = req.path_cleaned.split(":", 1)[0]
         for i in self.svcs:
             if i.svc_name == svc:
                 i.handle(req, sock)
-                print(f" * Closing socker...")
+                logger.info(" Closing socker...")
                 sock.close()
-                print(" * Done.")
+                logger.info(" Done.")
                 return
         sock.send(gen_400(f"Unknown service: {svc}. Literally, this service doesn't exists, so why you want to access this?"))
         sock.close()
@@ -129,13 +137,13 @@ class MiniServer: # truly a miniserver
         while True:
             try:
                 self.sock.bind((self.host, self.port))
-                print(" * Successfully binded on socket")
+                logger.info("Successfully binded on socket")
                 break
             except Exception as e:
-                print(f" * Exception while binding: {e}, trying again...")
+                logger.warning(f"Exception while binding: {e}, trying again...")
         self.sock.listen(10)
         self.sock.settimeout(0.5)
-        print(f" * Listening on {self.host}:{self.port}")
+        logger.info(f"Listening on {self.host}:{self.port}")
         while True:
             try:
                 conn, addr = self.sock.accept()
@@ -144,10 +152,10 @@ class MiniServer: # truly a miniserver
             except TimeoutError:
                 pass
             except KeyboardInterrupt:
-                print(" * Stopping server...")
+                logger.info("Stopping server...")
                 break
         try:
             self.sock.shutdown(SHUT_RD)
         except OSError: pass
         self.sock.close()
-        print("Server stopped.")
+        logger.info("Server stopped.")
