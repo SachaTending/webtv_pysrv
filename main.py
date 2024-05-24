@@ -39,7 +39,7 @@ def prereg(req: Request):
 def fetch_svcs(req: Request):
     ssid = req.common_headers.ssid
     #ssid_storage[ssid].initial_key = gen_key()
-    if not is_warrior(req): ch = gen_challenge(b64decode(ssid_storage[ssid].initial_key.encode()))
+    if not is_warrior(req): ch = gen_challenge(ssid_storage[ssid].initial_key)
     #print(ch, ch[2])
     if not is_warrior(req): ssid_storage[ssid].challenge = b64encode(ch[2]).decode()
     #ssid_storage[ssid].challenge_solved = check_challenge(ch[2], b64decode(ssid_storage[ssid].initial_key.encode()))

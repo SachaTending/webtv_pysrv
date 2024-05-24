@@ -17,7 +17,7 @@ def login(req: Request): # simulate full login sequence
         "wtv-visit": "wtv-head-waiter:/login-stage-two",
     }
     if not is_warrior(req):
-        if check_challenge(b64decode(ssid_storage[ssid].challenge.encode()), b64decode(ssid_storage[ssid].initial_key.encode()), b64decode(req.headers['wtv-challenge-response'].encode())):
+        if check_challenge(ssid_storage[ssid].challenge, ssid_storage[ssid].initial_key, req.headers['wtv-challenge-response']):
             hdrs['wtv-visit'] = 'wtv-1800:/fetch-svcs'
             print(" * Challenge is not solved, retrying...")
     else:
